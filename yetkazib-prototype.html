@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yo'lda — kuryer platformasi prototipi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0F3D3E;
+    --ink-2:#123f40;
+    --marigold:#F2A93B;
+    --paper:#EDF1EE;
+    --surface:#FFFFFF;
+    --text:#16211E;
+    --muted:#5C6D68;
+    --coral:#E85C4A;
+    --green:#3E7C59;
+    --line:#D8E0DB;
+    --radius:18px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0; min-height:100vh; background:
+      radial-gradient(circle at 15% -10%, #1a5354 0%, transparent 45%),
+      var(--paper);
+    font-family:'Inter',sans-serif; color:var(--text);
+    display:flex; align-items:center; justify-content:center; padding:28px 12px;
+  }
+  @media (prefers-reduced-motion: reduce){ *{animation-duration:0.001s !important; transition-duration:0.001s !important;} }
+
+  .device{
+    width:390px; max-width:100%; height:820px; max-height:92vh;
+    background:var(--surface); border-radius:40px; overflow:hidden;
+    box-shadow:0 40px 80px -20px rgba(15,61,62,.45), 0 0 0 10px #0c2626;
+    position:relative; display:flex; flex-direction:column;
+  }
+  .notch{ position:absolute; top:10px; left:50%; transform:translateX(-50%); width:120px; height:22px; background:#0c2626; border-radius:14px; z-index:50;}
+
+  .roleswitch{
+    display:flex; align-items:center; gap:6px; padding:44px 16px 10px; background:var(--ink);
+  }
+  .brandmark{ display:flex; align-items:center; gap:6px; margin-right:2px;}
+  .brandmark .dotmark{ width:8px; height:8px; border-radius:50%; background:var(--marigold);}
+  .brandmark span{ font-family:'Space Grotesk'; font-weight:700; font-size:13px; color:#fff; letter-spacing:.01em;}
+  .roleswitch button{
+    flex:1; padding:9px 6px; border-radius:100px; border:1px solid rgba(255,255,255,.18);
+    background:transparent; color:rgba(255,255,255,.6); font-family:'Space Grotesk'; font-size:12.5px; font-weight:600;
+    cursor:pointer; transition:.2s; letter-spacing:.2px;
+  }
+  .roleswitch button.active{ background:var(--marigold); color:var(--ink); border-color:var(--marigold);}
+
+  .screens{ flex:1; position:relative; overflow:hidden; }
+  .screen{
+    position:absolute; inset:0; background:var(--paper);
+    display:flex; flex-direction:column;
+    transform:translateX(100%); transition:transform .38s cubic-bezier(.65,0,.35,1);
+    opacity:0; pointer-events:none;
+  }
+  .screen.active{ transform:translateX(0); opacity:1; pointer-events:auto; z-index:2;}
+  .screen.exitleft{ transform:translateX(-100%); opacity:0;}
+
+  .topbar{
+    background:var(--ink); color:#fff; padding:16px 20px 20px; position:relative;
+    border-radius:0 0 22px 22px;
+  }
+  .topbar .eyebrow{ font-family:'IBM Plex Mono'; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--marigold); margin:0 0 4px;}
+  .topbar h1{ font-family:'Space Grotesk'; font-weight:700; font-size:21px; margin:0; line-height:1.15;}
+  .topbar p{ margin:6px 0 0; font-size:12.5px; color:rgba(255,255,255,.65);}
+
+  .body{ flex:1; overflow-y:auto; padding:16px 18px 90px; }
+  .body::-webkit-scrollbar{display:none;}
+
+  .card{ background:var(--surface); border-radius:var(--radius); padding:16px; border:1px solid var(--line); margin-bottom:12px;}
+  .card + .card{margin-top:0;}
+
+  label.field{ display:block; margin-bottom:12px;}
+  label.field span{ display:block; font-size:11.5px; font-weight:600; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:.06em;}
+  .inputrow{ display:flex; align-items:center; gap:10px; background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:11px 12px;}
+  .inputrow .dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
+  .inputrow input, .inputrow select{ border:none; background:transparent; outline:none; font-size:14.5px; font-family:'Inter'; width:100%; color:var(--text);}
+
+  .route-link{ height:22px; margin-left:15px; border-left:2px dashed var(--line); }
+
+  .chips{ display:flex; gap:8px; flex-wrap:wrap;}
+  .chip{ padding:8px 13px; border-radius:100px; border:1px solid var(--line); background:var(--surface); font-size:12.5px; font-weight:600; cursor:pointer; color:var(--text);}
+  .chip.selected{ background:var(--ink); color:#fff; border-color:var(--ink);}
+
+  .price-row{ display:flex; justify-content:space-between; align-items:baseline; margin-top:14px; padding-top:14px; border-top:1px dashed var(--line);}
+  .price-row .amount{ font-family:'Space Grotesk'; font-size:26px; font-weight:700; color:var(--ink);}
+  .price-row .amount span{font-size:14px; font-weight:600; color:var(--muted);}
+
+  .btn{
+    display:block; width:100%; text-align:center; padding:15px; border-radius:14px; border:none;
+    background:var(--marigold); color:var(--ink); font-family:'Space Grotesk'; font-weight:700; font-size:14.5px;
+    cursor:pointer; letter-spacing:.2px;
+  }
+  .btn.ghost{ background:transparent; border:1.5px solid var(--ink); color:var(--ink); margin-top:8px;}
+  .btn.small{ padding:10px; font-size:13px; width:auto; padding-inline:18px;}
+
+  /* Tracking screen — signature route element */
+  .map{ position:relative; height:230px; margin:0 -18px 14px; background:
+      linear-gradient(180deg, #123f40 0%, #0F3D3E 100%);
+    overflow:hidden;
+  }
+  .map svg{ position:absolute; inset:0; width:100%; height:100%;}
+  .map .routepath{ fill:none; stroke:rgba(242,169,59,.85); stroke-width:3; stroke-dasharray:7 8; stroke-linecap:round; animation:dash 1.6s linear infinite;}
+  @keyframes dash{ to{ stroke-dashoffset:-30; } }
+  .pin{ position:absolute; width:14px; height:14px; border-radius:50% 50% 50% 0; transform:rotate(-45deg); }
+  .pin.origin{ background:var(--marigold); box-shadow:0 0 0 5px rgba(242,169,59,.25);}
+  .pin.dest{ background:#fff; box-shadow:0 0 0 5px rgba(255,255,255,.2);}
+  .courierdot{ position:absolute; width:16px; height:16px; border-radius:50%; background:var(--coral); box-shadow:0 0 0 6px rgba(232,92,74,.28); animation:travel 6s ease-in-out infinite;}
+  @keyframes travel{
+    0%{ left:22%; top:72%; } 50%{ left:58%; top:32%; } 100%{ left:22%; top:72%; }
+  }
+  .maplabel{ position:absolute; bottom:10px; left:14px; color:#fff; font-family:'IBM Plex Mono'; font-size:10.5px; background:rgba(0,0,0,.28); padding:4px 9px; border-radius:100px;}
+
+  .statustrack{ display:flex; margin:4px 0 16px;}
+  .step{ flex:1; text-align:center; position:relative;}
+  .step .knot{ width:11px; height:11px; border-radius:50%; background:var(--line); margin:0 auto 6px; position:relative; z-index:2;}
+  .step.done .knot{ background:var(--green);}
+  .step.now .knot{ background:var(--marigold); box-shadow:0 0 0 4px rgba(242,169,59,.28);}
+  .step::before{ content:''; position:absolute; top:5px; left:-50%; width:100%; height:2px; background:var(--line); z-index:1;}
+  .step:first-child::before{ display:none;}
+  .step.done::before{ background:var(--green);}
+  .step span{ font-size:9.5px; color:var(--muted); font-weight:600;}
+
+  .courierinfo{ display:flex; align-items:center; gap:11px;}
+  .avatar{ width:44px; height:44px; border-radius:50%; background:var(--ink); color:#fff; display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk'; font-weight:700;}
+  .courierinfo .meta strong{ display:block; font-size:14px;}
+  .courierinfo .meta span{ font-size:12px; color:var(--muted);}
+  .courierinfo .call{ margin-left:auto; width:38px; height:38px; border-radius:50%; background:var(--paper); display:flex; align-items:center; justify-content:center; font-size:16px;}
+
+  /* Courier role — order list */
+  .orderitem{ background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:13px; margin-bottom:10px;}
+  .orderitem .top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+  .orderitem .top strong{ font-family:'Space Grotesk'; font-size:15.5px; color:var(--ink);}
+  .orderitem .top .pay{ font-family:'IBM Plex Mono'; font-size:13px; background:#e9f4ec; color:var(--green); padding:3px 8px; border-radius:6px;}
+  .orderitem .route-mini{ font-size:12.5px; color:var(--muted); line-height:1.5;}
+  .orderitem .route-mini b{ color:var(--text); font-weight:600;}
+  .orderitem .actions{ display:flex; gap:8px; margin-top:10px;}
+
+  .badge{ display:inline-block; font-family:'IBM Plex Mono'; font-size:10px; letter-spacing:.04em; padding:3px 8px; border-radius:6px; background:rgba(255,255,255,.14); color:#fff;}
+
+  .empty{ text-align:center; padding:50px 20px; color:var(--muted);}
+  .empty .glyph{ font-size:34px; margin-bottom:10px;}
+  .empty h3{ font-family:'Space Grotesk'; color:var(--text); margin:0 0 6px;}
+  .empty p{ font-size:13px; margin:0;}
+
+  .earnings{ background:var(--ink); color:#fff; border-radius:var(--radius); padding:18px; margin-bottom:14px;}
+  .earnings .eyebrow{ font-family:'IBM Plex Mono'; font-size:10.5px; color:var(--marigold); text-transform:uppercase; letter-spacing:.1em; margin:0 0 6px;}
+  .earnings .num{ font-family:'Space Grotesk'; font-size:30px; font-weight:700; margin:0;}
+  .earnings .num span{ font-size:14px; font-weight:500; color:rgba(255,255,255,.55);}
+
+  .tabbar{ position:absolute; bottom:0; left:0; right:0; background:var(--surface); border-top:1px solid var(--line); display:flex; padding:10px 8px calc(10px + env(safe-area-inset-bottom)); z-index:30;}
+  .tabbtn{ flex:1; text-align:center; background:none; border:none; font-family:'Inter'; font-size:10.5px; color:var(--muted); font-weight:600; cursor:pointer; padding:5px;}
+  .tabbtn .ic{ display:block; font-size:19px; margin-bottom:2px;}
+  .tabbtn.active{ color:var(--ink);}
+  .tabbtn.active .ic{ transform:translateY(-1px);}
+
+  .hint{ text-align:center; margin-top:14px; font-size:11.5px; color:var(--muted); padding:0 10px;}
+
+  .lockhint{ font-size:10.5px; color:var(--muted); margin-top:7px; font-style:italic;}
+
+  .smstoast{
+    position:absolute; top:52px; left:14px; right:14px; z-index:60;
+    background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:12px 14px;
+    box-shadow:0 14px 30px -10px rgba(15,61,62,.35); display:flex; gap:10px; align-items:flex-start;
+    transform:translateY(-140%); opacity:0; transition:transform .4s cubic-bezier(.34,1.4,.64,1), opacity .3s;
+  }
+  .smstoast.show{ transform:translateY(0); opacity:1;}
+  .smstoast .icon{ width:30px; height:30px; border-radius:8px; background:var(--green); color:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0;}
+  .smstoast .txt strong{ display:block; font-size:12.5px; font-family:'Space Grotesk';}
+  .smstoast .txt span{ font-size:11.5px; color:var(--muted); line-height:1.4;}
+</style>
+</head>
+<body>
+
+<div class="device">
+  <div class="notch"></div>
+  <div class="roleswitch">
+    <div class="brandmark"><div class="dotmark"></div><span>Yo'lda</span></div>
+    <button class="active" data-role="mijoz">Mijoz</button>
+    <button data-role="kuryer">Kuryer</button>
+  </div>
+
+  <div class="screens" id="screens">
+
+    <!-- MIJOZ: yangi buyurtma -->
+    <div class="screen active" data-screen="mijoz-yangi">
+      <div class="topbar">
+        <p class="eyebrow">Yo'lda · Yetkazish</p>
+        <h1>Nima yuboramiz?</h1>
+        <p>Manzilni kiriting, narx avtomatik hisoblanadi</p>
+      </div>
+      <div class="body">
+        <div class="card">
+          <label class="field">
+            <span>Qayerdan</span>
+            <div class="inputrow"><div class="dot" style="background:var(--marigold)"></div><input value="Chilonzor, 19-kvartal" readonly></div>
+          </label>
+          <div class="route-link"></div>
+          <label class="field" style="margin-top:6px;">
+            <span>Qayerga</span>
+            <div class="inputrow"><div class="dot" style="background:var(--ink)"></div><input placeholder="Manzilni kiriting" id="destInput" value="Yunusobod, Poytaxt savdo markazi"></div>
+          </label>
+          <label class="field">
+            <span>Nima tashiladi</span>
+            <div class="chips">
+              <div class="chip selected" data-chip="hujjat">📄 Hujjat</div>
+              <div class="chip" data-chip="paket">📦 Paket</div>
+              <div class="chip" data-chip="ovqat">🍔 Ovqat</div>
+              <div class="chip" data-chip="katta">🛋️ Katta yuk</div>
+            </div>
+          </label>
+          <div class="price-row">
+            <div>
+              <span style="font-size:11.5px; color:var(--muted); font-weight:600;">TAXMINIY NARX</span>
+            </div>
+            <div class="amount" id="priceAmount">18 000 <span>so'm</span></div>
+          </div>
+        </div>
+        <button class="btn" onclick="goto('mijoz-qidiruv')">Kuryer chaqirish</button>
+        <p class="hint">Narx masofa va yuk turiga qarab avtomatik hisoblanadi</p>
+      </div>
+    </div>
+
+    <!-- MIJOZ: qidiruv -->
+    <div class="screen" data-screen="mijoz-qidiruv">
+      <div class="topbar">
+        <p class="eyebrow">Qidirilmoqda</p>
+        <h1>Sizga eng yaqin kuryer topilmoqda…</h1>
+      </div>
+      <div class="body" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:60%; text-align:center;">
+        <div style="width:64px; height:64px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--marigold); animation:spin 1s linear infinite; margin-bottom:18px;"></div>
+        <h3 style="font-family:'Space Grotesk'; margin:0 0 6px;">Yaqin atrofdagi kuryerlarga yuborildi</h3>
+        <p style="color:var(--muted); font-size:13px; max-width:230px;">Odatda 30–90 soniya ichida kuryer qabul qiladi</p>
+      </div>
+      <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+    </div>
+
+    <!-- MIJOZ: kuzatuv -->
+    <div class="screen" data-screen="mijoz-kuzatuv">
+      <div class="body" style="padding-top:0;">
+        <div class="map">
+          <svg viewBox="0 0 300 230" preserveAspectRatio="none">
+            <path class="routepath" d="M 70 165 C 140 165, 130 70, 210 60" />
+          </svg>
+          <div class="pin origin" style="left:60px; top:158px;"></div>
+          <div class="pin dest" style="left:200px; top:53px;"></div>
+          <div class="courierdot"></div>
+          <div class="maplabel">~ 6 daqiqada yetib boradi</div>
+        </div>
+
+        <div class="statustrack">
+          <div class="step done"><div class="knot"></div><span>Qabul<br>qilindi</span></div>
+          <div class="step now"><div class="knot"></div><span>Yo'lda</span></div>
+          <div class="step"><div class="knot"></div><span>Olib<br>ketildi</span></div>
+          <div class="step"><div class="knot"></div><span>Yetkazildi</span></div>
+        </div>
+
+        <div class="card">
+          <div class="courierinfo">
+            <div class="avatar">SB</div>
+            <div class="meta">
+              <strong>Sardor Boltayev</strong>
+              <span>★ 4.9 · Damas, 01 A 777 BA</span>
+            </div>
+            <div class="call">📞</div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:12px; padding-top:12px; border-top:1px dashed var(--line);">
+            <div style="flex:1;">
+              <span style="display:block; font-size:10.5px; color:var(--muted); font-weight:600; text-transform:uppercase;">Telefon</span>
+              <span style="font-family:'IBM Plex Mono'; font-size:13px;">+998 90 123 45 67</span>
+            </div>
+            <div style="flex:1;">
+              <span style="display:block; font-size:10.5px; color:var(--muted); font-weight:600; text-transform:uppercase;">Joriy joylashuv</span>
+              <span style="font-family:'IBM Plex Mono'; font-size:13px;">41.328°N, 69.251°E</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="courierinfo" style="align-items:flex-start;">
+            <div class="meta" style="width:100%;">
+              <span style="text-transform:uppercase; letter-spacing:.06em; font-size:11px;">Buyurtma</span>
+              <strong style="font-size:13.5px; font-weight:600; margin-top:4px;">📄 Hujjat · Chilonzor → Yunusobod</strong>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn ghost" onclick="goto('mijoz-yangi')">Yangi buyurtma berish</button>
+      </div>
+    </div>
+
+    <!-- KURYER: buyurtmalar ro'yxati -->
+    <div class="screen" data-screen="kuryer-royxat">
+      <div class="topbar">
+        <p class="eyebrow">Onlayn · Chilonzor tumani</p>
+        <h1>Mavjud buyurtmalar</h1>
+      </div>
+      <div class="body">
+        <div class="earnings">
+          <p class="eyebrow">Bugungi daromad</p>
+          <p class="num">86 000 <span>so'm · 4 ta buyurtma</span></p>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,.15);">
+            <span style="font-size:11.5px; color:rgba(255,255,255,.6); font-weight:600;">ISHONCH BALLI</span>
+            <span style="font-family:'Space Grotesk'; font-weight:700; color:var(--marigold); font-size:15px;">96 / 100</span>
+          </div>
+        </div>
+
+        <div class="orderitem">
+          <div class="top"><strong>#0192</strong><span class="pay">+18 000</span></div>
+          <div class="route-mini"><b>Chilonzor tumani</b> → Yunusobod tumani<br>📄 Hujjat · ~4.2 km</div>
+          <div class="lockhint">🔒 Aniq manzil va mijoz ma'lumoti qabul qilgach ochiladi</div>
+          <div class="actions">
+            <button class="btn small" onclick="acceptOrder()">Qabul qilish</button>
+            <button class="btn ghost small" style="margin-top:0;">Batafsil</button>
+          </div>
+        </div>
+
+        <div class="orderitem">
+          <div class="top"><strong>#0193</strong><span class="pay">+27 500</span></div>
+          <div class="route-mini"><b>Sergeli tumani</b> → Mirzo Ulug'bek tumani<br>📦 Paket · ~8.6 km</div>
+          <div class="lockhint">🔒 Aniq manzil va mijoz ma'lumoti qabul qilgach ochiladi</div>
+          <div class="actions">
+            <button class="btn small" onclick="acceptOrder()">Qabul qilish</button>
+            <button class="btn ghost small" style="margin-top:0;">Batafsil</button>
+          </div>
+        </div>
+
+        <div class="orderitem">
+          <div class="top"><strong>#0194</strong><span class="pay">+12 000</span></div>
+          <div class="route-mini"><b>Shayxontohur tumani</b> → Yakkasaroy tumani<br>🍔 Ovqat · ~2.1 km</div>
+          <div class="lockhint">🔒 Aniq manzil va mijoz ma'lumoti qabul qilgach ochiladi</div>
+          <div class="actions">
+            <button class="btn small" onclick="acceptOrder()">Qabul qilish</button>
+            <button class="btn ghost small" style="margin-top:0;">Batafsil</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KURYER: yo'lda -->
+    <div class="screen" data-screen="kuryer-yolda">
+      <div class="body" style="padding-top:0;">
+        <div class="map">
+          <svg viewBox="0 0 300 230" preserveAspectRatio="none">
+            <path class="routepath" d="M 70 165 C 140 165, 130 70, 210 60" />
+          </svg>
+          <div class="pin origin" style="left:60px; top:158px;"></div>
+          <div class="pin dest" style="left:200px; top:53px;"></div>
+          <div class="courierdot" style="animation-duration:4s;"></div>
+          <div class="maplabel">Olib ketish nuqtasiga 900 m</div>
+        </div>
+
+        <div class="card">
+          <div class="courierinfo">
+            <div class="avatar">NM</div>
+            <div class="meta">
+              <strong>Nodira Mahmudova</strong>
+              <span>Mijoz · ★ 4.8</span>
+            </div>
+            <div class="call">📞</div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:12px; padding-top:12px; border-top:1px dashed var(--line);">
+            <div style="flex:1;">
+              <span style="display:block; font-size:10.5px; color:var(--muted); font-weight:600; text-transform:uppercase;">Telefon</span>
+              <span style="font-family:'IBM Plex Mono'; font-size:13px;">+998 91 765 43 21</span>
+            </div>
+            <div style="flex:1;">
+              <span style="display:block; font-size:10.5px; color:var(--muted); font-weight:600; text-transform:uppercase;">Olib ketish manzili</span>
+              <span style="font-family:'IBM Plex Mono'; font-size:12px;">Chilonzor, 19-kv, 4-uy</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <span style="text-transform:uppercase; letter-spacing:.06em; font-size:11px; color:var(--muted); font-weight:600;">Buyurtma #0192</span>
+          <p style="font-size:13.5px; font-weight:600; margin:6px 0 0;">📄 Hujjat · Chilonzor, 19-kv. → Yunusobod, Poytaxt SM</p>
+          <div class="price-row" style="margin-top:10px; padding-top:10px;">
+            <span style="font-size:12px; color:var(--muted); font-weight:600;">Sizning daromadingiz</span>
+            <div class="amount" style="font-size:19px;">18 000 <span>so'm</span></div>
+          </div>
+        </div>
+
+        <button class="btn" onclick="markDelivered()">Yetkazib berildi ✓</button>
+      </div>
+    </div>
+
+    <!-- MIJOZ: tekshirib olish -->
+    <div class="screen" data-screen="mijoz-tekshirish">
+      <div class="topbar">
+        <p class="eyebrow">Qabul qilish</p>
+        <h1>Buyurtmangizni tekshiring</h1>
+        <p>Kuryer yetkazib berdi — hammasi joyidami?</p>
+      </div>
+      <div class="body">
+        <div class="card">
+          <div class="courierinfo">
+            <div class="avatar">SB</div>
+            <div class="meta">
+              <strong>Sardor Boltayev</strong>
+              <span>Buyurtma #0192 · 📄 Hujjat</span>
+            </div>
+          </div>
+        </div>
+        <div class="card" id="muammoCard" style="display:none;">
+          <span style="font-size:11.5px; font-weight:600; color:var(--muted); text-transform:uppercase;">Muammo turi</span>
+          <div class="chips" style="margin-top:8px;">
+            <div class="chip" data-reason="shikast">Shikastlangan</div>
+            <div class="chip" data-reason="notogri">Noto'g'ri narsa</div>
+            <div class="chip" data-reason="kech">Kech keldi</div>
+            <div class="chip" data-reason="boshqa">Boshqa</div>
+          </div>
+        </div>
+        <button class="btn" onclick="confirmDelivery()">✅ Qabul qilaman, hammasi joyida</button>
+        <button class="btn ghost" id="muammoBtn" onclick="toggleMuammo()">⚠️ Muammo bor</button>
+      </div>
+    </div>
+
+    <!-- MIJOZ: yakun -->
+    <div class="screen" data-screen="mijoz-yakun">
+      <div class="body" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding-top:0;">
+        <div style="width:70px; height:70px; border-radius:50%; background:var(--green); color:#fff; display:flex; align-items:center; justify-content:center; font-size:32px; margin-bottom:16px;">✓</div>
+        <h3 style="font-family:'Space Grotesk'; margin:0 0 6px; font-size:19px;">Rahmat! Buyurtma yakunlandi</h3>
+        <p style="color:var(--muted); font-size:13px; max-width:230px; margin:0 0 22px;">Sardor B.ni baholab, boshqa mijozlarga yordam bering</p>
+        <div style="display:flex; gap:6px; font-size:30px; margin-bottom:26px;">★★★★★</div>
+        <button class="btn" style="width:200px;" onclick="goto('mijoz-yangi')">Yangi buyurtma berish</button>
+      </div>
+    </div>
+
+    <!-- KURYER: mijoz tekshirmoqda -->
+    <div class="screen" data-screen="kuryer-kutish">
+      <div class="topbar">
+        <p class="eyebrow">Kutilmoqda</p>
+        <h1>Mijoz buyurtmani tekshirmoqda…</h1>
+      </div>
+      <div class="body" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:60%; text-align:center;">
+        <div style="width:64px; height:64px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--marigold); animation:spin 1s linear infinite; margin-bottom:18px;"></div>
+        <h3 style="font-family:'Space Grotesk'; margin:0 0 6px;">Bir daqiqa kuting</h3>
+        <p style="color:var(--muted); font-size:13px; max-width:230px;">Mijoz "Qabul qilaman" bosishi bilan to'lovingiz tasdiqlanadi</p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="tabbar" id="tabbar">
+    <!-- filled by JS depending on role -->
+  </div>
+
+  <div class="smstoast" id="smstoast">
+    <div class="icon">✓</div>
+    <div class="txt">
+      <strong>SMS yuborildi mijozga</strong>
+      <span>"Kuryer Sardor B. buyurtmani qabul qildi, yo'lda! ~6 daqiqada yetib boradi."</span>
+    </div>
+  </div>
+
+  <div class="smstoast" id="paytoast">
+    <div class="icon" style="background:var(--ink);">₩</div>
+    <div class="txt">
+      <strong>To'lov tasdiqlandi</strong>
+      <span>18 000 so'm kuryer Sardor B.ga o'tkazildi</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  const screensEl = document.getElementById('screens');
+  const tabbar = document.getElementById('tabbar');
+  let currentRole = 'mijoz';
+  let currentScreen = 'mijoz-yangi';
+
+  const tabs = {
+    mijoz: [
+      {id:'mijoz-yangi', ic:'➕', label:'Buyurtma'},
+      {id:'mijoz-kuzatuv', ic:'📍', label:'Kuzatish'},
+    ],
+    kuryer: [
+      {id:'kuryer-royxat', ic:'📋', label:'Buyurtmalar'},
+      {id:'kuryer-yolda', ic:'🧭', label:'Faol reys'},
+    ]
+  };
+
+  function renderTabs(){
+    tabbar.innerHTML = '';
+    tabs[currentRole].forEach(t=>{
+      const b = document.createElement('button');
+      b.className = 'tabbtn' + (t.id===currentScreen ? ' active':'');
+      b.innerHTML = `<span class="ic">${t.ic}</span>${t.label}`;
+      b.onclick = ()=>goto(t.id);
+      tabbar.appendChild(b);
+    });
+  }
+
+  function goto(screenId){
+    document.querySelectorAll('.screen').forEach(s=>{
+      if(s.dataset.screen === screenId){
+        s.classList.add('active');
+        s.classList.remove('exitleft');
+      } else if(s.classList.contains('active')){
+        s.classList.remove('active');
+        s.classList.add('exitleft');
+      }
+    });
+    currentScreen = screenId;
+    currentRole = screenId.startsWith('mijoz') ? 'mijoz' : 'kuryer';
+    document.querySelectorAll('.roleswitch button').forEach(b=>{
+      b.classList.toggle('active', b.dataset.role === currentRole);
+    });
+    renderTabs();
+
+    // simulate search->tracking transition automatically
+    if(screenId === 'mijoz-qidiruv'){
+      setTimeout(()=>{ if(currentScreen==='mijoz-qidiruv') goto('mijoz-kuzatuv'); }, 2200);
+    }
+  }
+
+  function confirmDelivery(){
+    goto('mijoz-yakun');
+    const toast = document.getElementById('paytoast');
+    toast.classList.add('show');
+    setTimeout(()=> toast.classList.remove('show'), 3200);
+  }
+
+  function markDelivered(){
+    goto('kuryer-kutish');
+    setTimeout(()=>{ if(currentScreen==='kuryer-kutish') goto('mijoz-tekshirish'); }, 2400);
+  }
+
+  function toggleMuammo(){
+    const card = document.getElementById('muammoCard');
+    const btn = document.getElementById('muammoBtn');
+    const open = card.style.display !== 'none';
+    if(open){
+      card.style.display = 'none';
+      btn.textContent = '⚠️ Muammo bor';
+      btn.onclick = toggleMuammo;
+    } else {
+      card.style.display = 'block';
+      btn.textContent = '📨 Murojaatni yuborish';
+      btn.style.opacity = '.5';
+      btn.disabled = true;
+      btn.onclick = ()=>{
+        if(btn.disabled) return;
+        card.style.display = 'none';
+        goto('mijoz-yakun');
+        document.querySelector('[data-screen="mijoz-yakun"] h3').textContent = 'Murojaatingiz qabul qilindi';
+        document.querySelector('[data-screen="mijoz-yakun"] p').textContent = "Qo'llab-quvvatlash xizmati 30 daqiqa ichida bog'lanadi";
+        document.querySelector('[data-screen="mijoz-yakun"] div[style*="font-size:30px"]').style.display = 'none';
+      };
+    }
+  }
+
+  document.querySelectorAll('[data-reason]').forEach(c=>{
+    c.onclick = ()=>{
+      document.querySelectorAll('[data-reason]').forEach(x=>x.classList.remove('selected'));
+      c.classList.add('selected');
+      const btn = document.getElementById('muammoBtn');
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    };
+  });
+
+  function acceptOrder(){
+    goto('kuryer-yolda');
+    const toast = document.getElementById('smstoast');
+    toast.classList.add('show');
+    setTimeout(()=> toast.classList.remove('show'), 3200);
+  }
+
+  document.querySelectorAll('.roleswitch button').forEach(b=>{
+    b.onclick = ()=> goto(b.dataset.role==='mijoz' ? 'mijoz-yangi' : 'kuryer-royxat');
+  });
+
+  document.querySelectorAll('.chip').forEach(c=>{
+    c.onclick = ()=>{
+      document.querySelectorAll('.chip').forEach(x=>x.classList.remove('selected'));
+      c.classList.add('selected');
+      const prices = {hujjat:'18 000', paket:'27 500', ovqat:'12 000', katta:'46 000'};
+      document.getElementById('priceAmount').innerHTML = prices[c.dataset.chip] + ' <span>so\'m</span>';
+    };
+  });
+
+  renderTabs();
+</script>
+
+</body>
+</html>
